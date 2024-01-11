@@ -78,12 +78,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Metric pushed to Pushgateway successfully:", metricLine)
+	fmt.Printf("Metric pushed to Pushgateway successfully: %s", metricLine)
 }
 
 // formatLabel formats label as key="value" (including the double quotes)
 func formatLabel(raw string) (string, error) {
-	fmt.Println("formatLabel", raw)
 	parts := strings.Split(raw, "=")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid label: %s", raw)
