@@ -46,39 +46,42 @@ func main() {
 
 	// Read metric value from stdin
 	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
+	for scanner.Scan() {
+		metricValue := scanner.Text()
+		// Format the data in Prometheus exposition format
+		var dataBuilder strings.Builder
+		if *metricHelp != "" {
+			dataBuilder.WriteString(fmt.Sprintf("# HELP %s %s\n", *metricName, *metricHelp))
+		}
+		dataBuilder.WriteString(fmt.Sprintf("# TYPE %s %s\n", *metricName, *metricType))
+		metricLine := fmt.Sprintf("%s{%s} %s\n", *metricName, labels, metricValue)
+		dataBuilder.WriteString(metricLine)
+
+		// Send the data to the Pushgateway
+		url := fmt.Sprintf("%s/metrics/job/%s", pushgatewayUrl, *jobName)
+
+		fmt.Println("Sending metric to Pushgateway:", url, "\n", metricLine)
+		resp, err := http.Post(url, "text/plain", strings.NewReader(dataBuilder.String()))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error sending request to Pushgateway:", err)
+			continue
+		}
+
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			// Read the body of the response
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to push to Pushgateway: %s: %s\n", resp.Status, body)
+		}
+
+		fmt.Printf("Metric pushed to Pushgateway successfully: %s", metricLine)
+
+	}
+	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading metric value from stdin")
 		os.Exit(1)
 	}
-	metricValue := scanner.Text()
 
-	// Format the data in Prometheus exposition format
-	var dataBuilder strings.Builder
-	if *metricHelp != "" {
-		dataBuilder.WriteString(fmt.Sprintf("# HELP %s %s\n", *metricName, *metricHelp))
-	}
-	dataBuilder.WriteString(fmt.Sprintf("# TYPE %s %s\n", *metricName, *metricType))
-	metricLine := fmt.Sprintf("%s{%s} %s\n", *metricName, labels, metricValue)
-	dataBuilder.WriteString(metricLine)
-
-	// Send the data to the Pushgateway
-	url := fmt.Sprintf("%s/metrics/job/%s", pushgatewayUrl, *jobName)
-
-	resp, err := http.Post(url, "text/plain", strings.NewReader(dataBuilder.String()))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error sending request to Pushgateway:", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Read the body of the response
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Fprintf(os.Stderr, "Failed to push to Pushgateway: %s: %s\n", resp.Status, body)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Metric pushed to Pushgateway successfully: %s", metricLine)
 }
 
 // formatLabel formats label as key="value" (including the double quotes)
