@@ -2,17 +2,18 @@
 The purpose of `prom-pipe` is to completely eliminate the barriers to publishing
 quick [Prometheus](https://prometheus.io/) metrics from your shell.
 
-## Use Case
-The intended use case looks like this:
+Example:
 
-* You already use Prometheus for metrics
-* You want to add a new metric quickly, and:
-  * it doesn't naturally fit into any service
-  * you don't want to change production code just for this
-  * the metric can be generated easily with a quick shell pipeline or script
-  * you may only need it temporarily
+    ls /tmp/foo | wc -l | prom-pipe -j foo -n tmp_files
 
-For example, imagine you want to monitor the number of objects under an S3
+## Intended Use Case
+- You already use Prometheus for metrics.
+- You want to add a new metric quickly, and:
+  - it doesn't naturally fit into any service or job
+  - you don't want to change any existing production code just for this task
+  - the metric can be generated easily with a shell pipeline or script
+
+For example, imagine you want to track the number of objects under an S3
 prefix, in order to keep tabs on a recent bug fix. How would you normally
 do that?
 
@@ -20,10 +21,11 @@ With `prom-pipe`, you can just do this:
 
     aws s3 ls --recursive s3://bucket/prefix | wc -l | prom-pipe -j myjob -n s3_objects
 
-That's it!
+That's it! Set that up to run periodically using whatever pattern you like, and
+enjoy your new metric.
 
-While Prometheus is intuitive, and the Pushgateway has a simple API, the details
-add up to a nontrivial amount of mental load.
+While Prometheus and the Pushgateway are well-designed and conceptually simple,
+publishing a one-off metric from a bash script is not as easy as it should be.
 
 ## Benefits
 This tool addresses these obstacles:
